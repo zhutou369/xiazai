@@ -12,6 +12,21 @@ export function isValidName(name) {
   return /^[a-zA-Z]+$/.test(name);
 }
 
+export function isValidProductName(name) {
+  const n = name?.trim();
+  if (!n || n.length > 128) return false;
+  if (n === '.' || n === '..') return false;
+  return !/[\/\\]/.test(n);
+}
+
+export function normalizeProductName(name) {
+  return name.trim().toLowerCase();
+}
+
+export function encodeProductSegment(name) {
+  return encodeURIComponent(name);
+}
+
 export function isSuperAdminUser(username) {
   return username.toLowerCase() === SUPER_ADMIN_USER;
 }
@@ -23,8 +38,8 @@ export function getAdminDir(username) {
 
 /** 超级管理员产品: /kuailian.txt，其他管理员: /zh/kuailian.txt */
 export function getProductUrl(username, product) {
-  const name = product.toLowerCase();
-  return isSuperAdminUser(username) ? `/${name}.txt` : `/${username.toLowerCase()}/${name}.txt`;
+  const seg = encodeProductSegment(product);
+  return isSuperAdminUser(username) ? `/${seg}.txt` : `/${username.toLowerCase()}/${seg}.txt`;
 }
 
 export function getToday() {

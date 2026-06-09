@@ -312,8 +312,8 @@ function switchDetailTab(btn, tab) {
 function addProduct() {
   showModal('新增产品', `
     <div class="form-group">
-      <label>产品名称（仅字母）</label>
-      <input id="new-product-name" placeholder="例如 kuailian" pattern="[a-zA-Z]+">
+      <label>产品名称</label>
+      <input id="new-product-name" placeholder="例如 kuailian、快连-v2.0">
       <div class="hint">将生成 ${getProductPreviewPath()}<span id="preview-name">产品名</span>.txt</div>
     </div>
     <div class="form-group">
@@ -355,7 +355,7 @@ function editProduct(name) {
 function renameProduct(name) {
   showModal(`重命名 - ${name}`, `
     <div class="form-group">
-      <label>新名称（仅字母）</label>
+      <label>新名称</label>
       <input id="rename-new" placeholder="新产品名称" value="${name}">
     </div>
   `, async () => {

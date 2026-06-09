@@ -1,7 +1,7 @@
 import {
   initDefaultAdmin, findAdmin, getAdmins, saveAdmins,
   getProductList, saveProductList, getProduct, saveProduct, deleteProduct,
-  getStats, createSession, getSession, deleteSession, isValidName,
+  getStats, createSession, getSession, deleteSession, isValidName, isValidProductName, normalizeProductName,
   getAdminDir, getProductUrl, SUPER_ADMIN_USER, getDownloadLogs, summarizeLogs, getToday
 } from '../utils/storage.js';
 import { json, cors, unauthorized, badRequest, notFound, getToken } from '../utils/response.js';
@@ -153,16 +153,16 @@ export async function onRequest(context) {
         const body = await request.json();
         const { name, content = '' } = body;
         if (!name) return badRequest('请输入产品名称');
-        if (!isValidName(name)) return badRequest('产品名称只能包含字母');
+        if (!isValidProductName(name)) return badRequest('产品名称不合法，不能包含 / 或 \\');
 
-        const lowerName = name.toLowerCase();
+        const productName = normalizeProductName(name);
         const list = await getProductList(env.XIAZAI_KV, admin.username);
-        if (list.includes(lowerName)) return badRequest('产品已存在');
+        if (list.includes(productName)) return badRequest('产品已存在');
 
-        list.push(lowerName);
+        list.push(productName);
         await saveProductList(env.XIAZAI_KV, admin.username, list);
-        await saveProduct(env.XIAZAI_KV, admin.username, lowerName, {
-          name: lowerName,
+        await saveProduct(env.XIAZAI_KV, admin.username, productName, {
+          name: productName,
           content,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -170,8 +170,8 @@ export async function onRequest(context) {
 
         return json({
           success: true,
-          name: lowerName,
-          url: getProductUrl(admin.username, lowerName)
+          name: productName,
+          url: getProductUrl(admin.username, productName)
         });
       }
 
@@ -180,47 +180,46 @@ export async function onRequest(context) {
         const { oldName, newName, content } = body;
         if (!oldName) return badRequest('请指定产品');
 
-        const lowerOld = oldName.toLowerCase();
+        const oldProduct = normalizeProductName(oldName);
         const list = await getProductList(env.XIAZAI_KV, admin.username);
-        if (!list.includes(lowerOld)) return notFound('产品不存在');
+        if (!list.includes(oldProduct)) return notFound('产品不存在');
 
-        if (newName && newName.toLowerCase() !== lowerOld) {
-          if (!isValidName(newName)) return badRequest('产品名称只能包含字母');
-          const lowerNew = newName.toLowerCase();
-          if (list.includes(lowerNew)) return badRequest('目标产品名已存在');
+        if (newName && normalizeProductName(newName) !== oldProduct) {
+          if (!isValidProductName(newName)) return badRequest('产品名称不合法，不能包含 / 或 \\');
+          const newProduct = normalizeProductName(newName);
+          if (list.includes(newProduct)) return badRequest('目标产品名已存在');
 
-          const prod = await getProduct(env.XIAZAI_KV, admin.username, lowerOld);
-          const stats = await getStats(env.XIAZAI_KV, admin.username, lowerOld);
+          const prod = await getProduct(env.XIAZAI_KV, admin.username, oldProduct);
 
-          await saveProduct(env.XIAZAI_KV, admin.username, lowerNew, {
+          await saveProduct(env.XIAZAI_KV, admin.username, newProduct, {
             ...prod,
-            name: lowerNew,
+            name: newProduct,
             content: content !== undefined ? content : prod?.content || '',
             updatedAt: new Date().toISOString()
           });
 
-          const statsKey = `stats:${admin.username.toLowerCase()}:${lowerOld}`;
+          const statsKey = `stats:${admin.username.toLowerCase()}:${oldProduct}`;
           const statsData = await env.XIAZAI_KV.get(statsKey, 'json');
           if (statsData) {
-            await env.XIAZAI_KV.put(`stats:${admin.username.toLowerCase()}:${lowerNew}`, JSON.stringify(statsData));
+            await env.XIAZAI_KV.put(`stats:${admin.username.toLowerCase()}:${newProduct}`, JSON.stringify(statsData));
             await env.XIAZAI_KV.delete(statsKey);
           }
 
-          await deleteProduct(env.XIAZAI_KV, admin.username, lowerOld);
-          const newList = list.filter(p => p !== lowerOld);
-          newList.push(lowerNew);
+          await deleteProduct(env.XIAZAI_KV, admin.username, oldProduct);
+          const newList = list.filter(p => p !== oldProduct);
+          newList.push(newProduct);
           await saveProductList(env.XIAZAI_KV, admin.username, newList);
 
-          return json({ success: true, name: lowerNew });
+          return json({ success: true, name: newProduct });
         }
 
-        const prod = await getProduct(env.XIAZAI_KV, admin.username, lowerOld);
-        await saveProduct(env.XIAZAI_KV, admin.username, lowerOld, {
+        const prod = await getProduct(env.XIAZAI_KV, admin.username, oldProduct);
+        await saveProduct(env.XIAZAI_KV, admin.username, oldProduct, {
           ...prod,
           content: content !== undefined ? content : prod?.content || '',
           updatedAt: new Date().toISOString()
         });
-        return json({ success: true, name: lowerOld });
+        return json({ success: true, name: oldProduct });
       }
 
       if (request.method === 'DELETE') {

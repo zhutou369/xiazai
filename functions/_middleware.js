@@ -12,9 +12,17 @@ async function serveProduct(env, admin, product, request) {
   });
 }
 
+function decodePathname(pathname) {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return pathname;
+  }
+}
+
 export async function onRequest(context) {
   const { request, env, next } = context;
-  const pathname = new URL(request.url).pathname;
+  const pathname = decodePathname(new URL(request.url).pathname);
 
   if (pathname === '/assets' || pathname.startsWith('/assets/')) {
     return text('Not Found', 404);
@@ -22,8 +30,8 @@ export async function onRequest(context) {
 
   if (request.method !== 'GET') return next();
 
-  // 超级管理员 admin：根目录 /kuailian.txt
-  const rootMatch = pathname.match(/^\/([a-zA-Z]+)\.txt$/);
+  // 超级管理员 admin：根目录 /产品名.txt
+  const rootMatch = pathname.match(/^\/([^/]+)\.txt$/);
   if (rootMatch) {
     const product = rootMatch[1].toLowerCase();
     const response = await serveProduct(env, SUPER_ADMIN_USER, product, request);
@@ -31,8 +39,8 @@ export async function onRequest(context) {
     return next();
   }
 
-  // 其他管理员：/zh/kuailian.txt
-  const subMatch = pathname.match(/^\/([a-zA-Z]+)\/([a-zA-Z]+)\.txt$/);
+  // 其他管理员：/zh/产品名.txt
+  const subMatch = pathname.match(/^\/([a-zA-Z]+)\/([^/]+)\.txt$/);
   if (subMatch) {
     const admin = subMatch[1].toLowerCase();
     const product = subMatch[2].toLowerCase();
