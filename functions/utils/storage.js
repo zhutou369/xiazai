@@ -77,29 +77,50 @@ export function logsKey(admin, product, date) {
   return `${LOGS_PREFIX}${admin.toLowerCase()}:${product.toLowerCase()}:${date}`;
 }
 
-export function dedupKey(admin, product, ip) {
-  return `${DEDUP_PREFIX}${admin.toLowerCase()}:${product.toLowerCase()}:${ip}`;
+export function dedupKey(admin, product, clientId) {
+  return `${DEDUP_PREFIX}${admin.toLowerCase()}:${product.toLowerCase()}:${clientId}`;
 }
 
-export async function hasIpDownloaded(kv, admin, product, ip) {
-  if (!ip || ip === '未知') return false;
-  return !!(await kv.get(dedupKey(admin, product, ip)));
+export function getClientId(request) {
+  const ip = request.headers.get('CF-Connecting-IP')
+    || request.headers.get('True-Client-IP')
+    || request.headers.get('X-Real-IP')
+    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim();
+  if (ip) return ip;
+  const ua = request.headers.get('User-Agent') || 'unknown';
+  return `fp:${ua.slice(0, 120)}`;
 }
 
 export function extractVisitInfo(request) {
   const cf = request.cf || {};
   const referrer = request.headers.get('Referer') || request.headers.get('Referrer') || '';
   const parts = [cf.country, cf.region || cf.regionCode, cf.city].filter(Boolean);
+  const clientId = getClientId(request);
 
   return {
     time: new Date().toISOString(),
     referrer: referrer || '直接访问',
-    ip: request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || '未知',
+    ip: clientId.startsWith('fp:') ? '未知' : clientId,
+    clientId,
     country: cf.country || '未知',
     region: cf.region || cf.regionCode || '',
     city: cf.city || '',
     location: parts.length ? parts.join(' / ') : '未知',
   };
+}
+
+export async function hasIpDownloaded(kv, admin, product, clientId) {
+  if (!clientId) return false;
+
+  const dedup = await kv.get(dedupKey(admin, product, clientId));
+  if (dedup) return true;
+
+  const stats = await kv.get(statsKey(admin, product), 'json');
+  if (stats?.ips?.[clientId]) return true;
+
+  const today = getToday();
+  const logs = await kv.get(logsKey(admin, product, today), 'json') || [];
+  return logs.some(log => log.clientId === clientId || (clientId && log.ip === clientId));
 }
 
 export async function getProductList(kv, admin) {
@@ -131,6 +152,8 @@ export async function appendDownloadLog(kv, admin, product, visitInfo) {
   const today = getToday();
   const key = logsKey(admin, product, today);
   const logs = await kv.get(key, 'json') || [];
+  const clientId = visitInfo.clientId || visitInfo.ip;
+  if (logs.some(log => log.clientId === clientId || log.ip === visitInfo.ip)) return;
   logs.unshift(visitInfo);
   if (logs.length > MAX_DAILY_LOGS) logs.length = MAX_DAILY_LOGS;
   await kv.put(key, JSON.stringify(logs));
@@ -189,14 +212,17 @@ export async function getStats(kv, admin, product) {
 }
 
 export async function incrementDownload(kv, admin, product, visitInfo = null) {
-  const ip = visitInfo?.ip;
-  if (await hasIpDownloaded(kv, admin, product, ip)) {
+  const clientId = visitInfo?.clientId || visitInfo?.ip;
+  if (!clientId) {
     return await getStats(kv, admin, product);
   }
 
-  if (ip && ip !== '未知') {
-    await kv.put(dedupKey(admin, product, ip), '1');
+  if (await hasIpDownloaded(kv, admin, product, clientId)) {
+    return await getStats(kv, admin, product);
   }
+
+  // 先写入去重标记，防止快速刷新时重复计数
+  await kv.put(dedupKey(admin, product, clientId), JSON.stringify({ t: Date.now() }));
 
   const key = statsKey(admin, product);
   const today = getToday();
@@ -204,22 +230,29 @@ export async function incrementDownload(kv, admin, product, visitInfo = null) {
   let stats = await kv.get(key, 'json');
 
   if (!stats) {
-    stats = { today: 1, yesterday: 0, total: 1, todayDate: today, yesterdayDate: yesterday };
-  } else {
-    if (stats.todayDate !== today) {
-      if (stats.todayDate === yesterday) {
-        stats.yesterday = stats.today;
-        stats.yesterdayDate = yesterday;
-      } else {
-        stats.yesterday = 0;
-        stats.yesterdayDate = yesterday;
-      }
-      stats.today = 0;
-      stats.todayDate = today;
-    }
-    stats.today += 1;
-    stats.total = (stats.total || 0) + 1;
+    stats = { today: 0, yesterday: 0, total: 0, todayDate: today, yesterdayDate: yesterday, ips: {} };
   }
+  if (!stats.ips) stats.ips = {};
+
+  if (stats.ips[clientId]) {
+    return await getStats(kv, admin, product);
+  }
+
+  if (stats.todayDate !== today) {
+    if (stats.todayDate === yesterday) {
+      stats.yesterday = stats.today;
+      stats.yesterdayDate = yesterday;
+    } else {
+      stats.yesterday = 0;
+      stats.yesterdayDate = yesterday;
+    }
+    stats.today = 0;
+    stats.todayDate = today;
+  }
+
+  stats.ips[clientId] = 1;
+  stats.today += 1;
+  stats.total = (stats.total || 0) + 1;
 
   await kv.put(key, JSON.stringify(stats));
   if (visitInfo) await appendDownloadLog(kv, admin, product, visitInfo);
