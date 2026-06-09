@@ -9,6 +9,8 @@ async function serveProduct(env, admin, product, request) {
   return text(prod.content || '', 200, {
     'Content-Disposition': `inline; filename="${product}.txt"`,
     'Cache-Control': 'no-cache',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
   });
 }
 
@@ -26,6 +28,17 @@ export async function onRequest(context) {
 
   if (pathname === '/assets' || pathname.startsWith('/assets/')) {
     return text('Not Found', 404);
+  }
+
+  if (request.method === 'OPTIONS' && /\.txt$/.test(pathname)) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   if (request.method !== 'GET') return next();
