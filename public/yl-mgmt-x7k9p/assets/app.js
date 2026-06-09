@@ -109,7 +109,7 @@ function renderProducts() {
       <div class="product-actions">
         <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.name}')">编辑</button>
         <button class="btn btn-ghost btn-sm" onclick="renameProduct('${p.name}')">重命名</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.name}')">删除</button>
+        ${currentUser.isSuper ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.name}')">删除</button>` : ''}
       </div>
     </div>
   `).join('');

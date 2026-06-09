@@ -227,6 +227,7 @@ export async function onRequest(context) {
       }
 
       if (request.method === 'DELETE') {
+        if (!admin.isSuper) return unauthorized('仅超级管理员 admin 可删除产品');
         const name = url.searchParams.get('name');
         if (!name) return badRequest('请指定产品');
         await deleteProduct(env.XIAZAI_KV, admin.username, name);
