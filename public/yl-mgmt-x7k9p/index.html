@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台</title>
+  <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+  <div id="login-page" class="login-page">
+    <div class="login-card">
+      <h1>下载统计站</h1>
+      <p class="subtitle">管理员登录</p>
+      <form id="login-form">
+        <div class="form-group">
+          <label>用户名</label>
+          <input id="login-user" type="text" placeholder="管理员名称" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input id="login-pass" type="password" placeholder="密码" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">登录</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <div class="container">
+      <header class="header">
+        <div>
+          <h1>下载统计站后台</h1>
+          <div style="margin-top:4px">
+            <span class="badge" id="user-badge"></span>
+            <span class="badge super hidden" id="super-badge">超级管理员</span>
+          </div>
+        </div>
+        <div class="header-info">
+          <a id="user-url" class="badge" href="#" target="_blank"></a>
+          <button id="change-pass-btn" class="btn btn-ghost btn-sm">改密码</button>
+          <button id="logout-btn" class="btn btn-ghost btn-sm">退出</button>
+        </div>
+      </header>
+
+      <div class="tabs">
+        <button class="tab active" id="tab-products" onclick="switchTab('products')">产品管理</button>
+        <button class="tab hidden" id="tab-admins" onclick="switchTab('admins')">管理员</button>
+      </div>
+
+      <div id="panel-products" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <h2>我的产品</h2>
+            <div style="display:flex;gap:8px">
+              <button id="refresh-btn" class="btn btn-ghost btn-sm">刷新统计</button>
+              <button id="add-product-btn" class="btn btn-primary btn-sm">新增产品</button>
+            </div>
+          </div>
+          <div id="product-list" class="product-list"></div>
+        </div>
+      </div>
+
+      <div id="panel-admins" class="tab-panel hidden">
+        <div class="card">
+          <div class="card-header">
+            <h2>管理员列表</h2>
+            <button id="add-admin-btn" class="btn btn-primary btn-sm">新增管理员</button>
+          </div>
+          <p class="hint" style="margin-bottom:16px">管理员名称仅支持字母，每个管理员对应独立目录，如 zh → /zh/</p>
+          <div id="admin-list" class="admin-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="modal-title"></h2>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn btn-ghost">取消</button>
+        <button id="modal-confirm" class="btn btn-primary">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./assets/app.js"></script>
+</body>
+</html>

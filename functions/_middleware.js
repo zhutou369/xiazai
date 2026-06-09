@@ -16,6 +16,10 @@ export async function onRequest(context) {
   const { request, env, next } = context;
   const pathname = new URL(request.url).pathname;
 
+  if (pathname === '/assets' || pathname.startsWith('/assets/')) {
+    return text('Not Found', 404);
+  }
+
   if (request.method !== 'GET') return next();
 
   // 超级管理员 admin：根目录 /kuailian.txt

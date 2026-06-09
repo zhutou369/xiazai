@@ -10,3 +10,4 @@ preview_id = "e22853c69bb3493db92d607f76079329"
 [vars]
 DEFAULT_ADMIN_USER = "admin"
 DEFAULT_ADMIN_PASS = "admin123"
+ADMIN_PATH = "yl-mgmt-x7k9p"

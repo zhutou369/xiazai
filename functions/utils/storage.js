@@ -3,6 +3,7 @@ const SESSION_PREFIX = 'session:';
 const PRODUCT_PREFIX = 'product:';
 const STATS_PREFIX = 'stats:';
 const LOGS_PREFIX = 'logs:';
+const DEDUP_PREFIX = 'dedup:';
 const MAX_DAILY_LOGS = 1000;
 
 export const SUPER_ADMIN_USER = 'admin';
@@ -74,6 +75,15 @@ export function statsKey(admin, product) {
 
 export function logsKey(admin, product, date) {
   return `${LOGS_PREFIX}${admin.toLowerCase()}:${product.toLowerCase()}:${date}`;
+}
+
+export function dedupKey(admin, product, ip) {
+  return `${DEDUP_PREFIX}${admin.toLowerCase()}:${product.toLowerCase()}:${ip}`;
+}
+
+export async function hasIpDownloaded(kv, admin, product, ip) {
+  if (!ip || ip === '未知') return false;
+  return !!(await kv.get(dedupKey(admin, product, ip)));
 }
 
 export function extractVisitInfo(request) {
@@ -179,6 +189,15 @@ export async function getStats(kv, admin, product) {
 }
 
 export async function incrementDownload(kv, admin, product, visitInfo = null) {
+  const ip = visitInfo?.ip;
+  if (await hasIpDownloaded(kv, admin, product, ip)) {
+    return await getStats(kv, admin, product);
+  }
+
+  if (ip && ip !== '未知') {
+    await kv.put(dedupKey(admin, product, ip), '1');
+  }
+
   const key = statsKey(admin, product);
   const today = getToday();
   const yesterday = getYesterday();
