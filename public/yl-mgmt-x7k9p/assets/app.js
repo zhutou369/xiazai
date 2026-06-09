@@ -88,6 +88,9 @@ function renderProducts() {
         <div class="product-url">
           <a href="${getFullUrl(p.url)}" target="_blank">${getFullUrl(p.url)}</a>
         </div>
+        <div class="product-remark-wrap">
+          <input type="text" class="product-remark${p.remark ? ' has-remark' : ''}" data-name="${escapeHtml(p.name)}" value="${escapeHtml(p.remark || '')}" placeholder="备注（输入后自动保存）">
+        </div>
         <div class="stats-row">
           <div class="stat today clickable" onclick="showTodayLogs('${p.name}')" title="点击查看今日下载详情">
             <div class="stat-value">${p.stats.today}</div>
@@ -317,14 +320,19 @@ function addProduct() {
       <div class="hint">将生成 ${getProductPreviewPath()}<span id="preview-name">产品名</span>.txt</div>
     </div>
     <div class="form-group">
+      <label>备注（可选）</label>
+      <input id="new-product-remark" placeholder="产品备注，会显示在产品卡片上">
+    </div>
+    <div class="form-group">
       <label>文件内容</label>
       <textarea id="new-product-content" placeholder="输入下载文件内容..."></textarea>
     </div>
   `, async () => {
     const name = document.getElementById('new-product-name').value.trim();
     const content = document.getElementById('new-product-content').value;
+    const remark = document.getElementById('new-product-remark').value;
     if (!name) throw new Error('请输入产品名称');
-    await api('products', { method: 'POST', body: JSON.stringify({ name, content }) });
+    await api('products', { method: 'POST', body: JSON.stringify({ name, content, remark }) });
     await loadProducts();
     toast('产品已创建');
   });
@@ -340,13 +348,18 @@ function editProduct(name) {
   const product = products.find(p => p.name === name);
   showModal(`编辑 - ${name}`, `
     <div class="form-group">
+      <label>备注</label>
+      <input id="edit-remark" value="${escapeHtml(product.remark || '')}" placeholder="产品备注">
+    </div>
+    <div class="form-group">
       <label>文件内容</label>
       <textarea id="edit-content">${product.content || ''}</textarea>
     </div>
     <div class="hint">下载链接: ${getFullUrl(product.url)}</div>
   `, async () => {
     const content = document.getElementById('edit-content').value;
-    await api('products', { method: 'PUT', body: JSON.stringify({ oldName: name, content }) });
+    const remark = document.getElementById('edit-remark').value;
+    await api('products', { method: 'PUT', body: JSON.stringify({ oldName: name, content, remark }) });
     await loadProducts();
     toast('已保存');
   });
@@ -434,6 +447,15 @@ function changePassword() {
   });
 }
 
+async function saveRemark(name, remark) {
+  const product = products.find(p => p.name === name);
+  if (!product || product.remark === remark) return;
+  await api('products', { method: 'PUT', body: JSON.stringify({ oldName: name, remark }) });
+  product.remark = remark;
+  renderProducts();
+  toast('备注已保存');
+}
+
 async function init() {
   document.getElementById('login-form').addEventListener('submit', handleLogin);
   document.getElementById('logout-btn').addEventListener('click', handleLogout);
@@ -441,6 +463,17 @@ async function init() {
   document.getElementById('add-admin-btn').addEventListener('click', addAdmin);
   document.getElementById('change-pass-btn').addEventListener('click', changePassword);
   document.getElementById('refresh-btn').addEventListener('click', loadProducts);
+
+  document.getElementById('product-list').addEventListener('blur', (e) => {
+    if (e.target.classList.contains('product-remark')) {
+      saveRemark(e.target.dataset.name, e.target.value).catch(err => toast(err.message, 'error'));
+    }
+  }, true);
+  document.getElementById('product-list').addEventListener('keydown', (e) => {
+    if (e.target.classList.contains('product-remark') && e.key === 'Enter') {
+      e.target.blur();
+    }
+  });
 
   const token = getToken();
   if (token) {

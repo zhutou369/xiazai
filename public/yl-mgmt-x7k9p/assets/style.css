@@ -279,6 +279,31 @@ textarea {
   text-decoration: underline;
 }
 
+.product-remark-wrap {
+  margin-top: 10px;
+}
+
+.product-remark {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.product-remark:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.product-remark.has-remark {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: var(--text);
+}
+
 .stats-row {
   display: flex;
   gap: 16px;

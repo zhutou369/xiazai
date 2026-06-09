@@ -141,6 +141,7 @@ export async function onRequest(context) {
           result.push({
             name,
             content: prod?.content || '',
+            remark: prod?.remark || '',
             url: getProductUrl(targetAdmin, name),
             stats
           });
@@ -151,7 +152,7 @@ export async function onRequest(context) {
 
       if (request.method === 'POST') {
         const body = await request.json();
-        const { name, content = '' } = body;
+        const { name, content = '', remark = '' } = body;
         if (!name) return badRequest('请输入产品名称');
         if (!isValidProductName(name)) return badRequest('产品名称不合法，不能包含 / 或 \\');
 
@@ -164,6 +165,7 @@ export async function onRequest(context) {
         await saveProduct(env.XIAZAI_KV, admin.username, productName, {
           name: productName,
           content,
+          remark,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -177,7 +179,7 @@ export async function onRequest(context) {
 
       if (request.method === 'PUT') {
         const body = await request.json();
-        const { oldName, newName, content } = body;
+        const { oldName, newName, content, remark } = body;
         if (!oldName) return badRequest('请指定产品');
 
         const oldProduct = normalizeProductName(oldName);
@@ -195,6 +197,7 @@ export async function onRequest(context) {
             ...prod,
             name: newProduct,
             content: content !== undefined ? content : prod?.content || '',
+            remark: remark !== undefined ? remark : prod?.remark || '',
             updatedAt: new Date().toISOString()
           });
 
@@ -217,6 +220,7 @@ export async function onRequest(context) {
         await saveProduct(env.XIAZAI_KV, admin.username, oldProduct, {
           ...prod,
           content: content !== undefined ? content : prod?.content || '',
+          remark: remark !== undefined ? remark : prod?.remark || '',
           updatedAt: new Date().toISOString()
         });
         return json({ success: true, name: oldProduct });
