@@ -1,0 +1,13 @@
+{
+  "name": "xiazai",
+  "version": "1.0.0",
+  "description": "下载统计站后台 - Cloudflare Pages",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev public --kv XIAZAI_KV",
+    "deploy": "wrangler pages deploy public --project-name=xiazai"
+  },
+  "devDependencies": {
+    "wrangler": "^3.99.0"
+  }
+}

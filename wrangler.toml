@@ -1,0 +1,12 @@
+name = "xiazai"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "public"
+
+[[kv_namespaces]]
+binding = "XIAZAI_KV"
+id = "b7ba16ea32604832ae92f138ffa87703"
+preview_id = "e22853c69bb3493db92d607f76079329"
+
+[vars]
+DEFAULT_ADMIN_USER = "admin"
+DEFAULT_ADMIN_PASS = "admin123"
