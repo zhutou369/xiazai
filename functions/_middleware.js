@@ -2,10 +2,17 @@ import { incrementDownload, getProduct, SUPER_ADMIN_USER, extractVisitInfo } fro
 import { text } from './utils/response.js';
 
 async function serveProduct(env, admin, product, request) {
+  if (!env.XIAZAI_KV) return text('服务未配置', 500);
+
   const prod = await getProduct(env.XIAZAI_KV, admin, product);
   if (!prod) return null;
 
-  await incrementDownload(env.XIAZAI_KV, admin, product, extractVisitInfo(request));
+  try {
+    await incrementDownload(env.XIAZAI_KV, admin, product, extractVisitInfo(request));
+  } catch (_) {
+    // 统计失败不影响文件下载
+  }
+
   return text(prod.content || '', 200, {
     'Content-Disposition': `inline; filename="${product}.txt"`,
     'Cache-Control': 'no-cache',

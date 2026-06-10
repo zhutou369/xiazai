@@ -126,16 +126,7 @@ export function extractVisitInfo(request) {
 
 export async function hasIpDownloaded(kv, admin, product, clientId) {
   if (!clientId) return false;
-
-  const dedup = await kv.get(dedupKey(admin, product, clientId));
-  if (dedup) return true;
-
-  const stats = await kv.get(statsKey(admin, product), 'json');
-  if (stats?.ips?.[clientId]) return true;
-
-  const today = getToday();
-  const logs = await kv.get(logsKey(admin, product, today), 'json') || [];
-  return logs.some(log => log.clientId === clientId || (clientId && log.ip === clientId));
+  return !!(await kv.get(dedupKey(admin, product, clientId)));
 }
 
 export async function getProductList(kv, admin) {
@@ -166,7 +157,8 @@ export async function deleteProduct(kv, admin, product) {
 export async function appendDownloadLog(kv, admin, product, visitInfo) {
   const today = getToday();
   const key = logsKey(admin, product, today);
-  const logs = await kv.get(key, 'json') || [];
+  const raw = await kv.get(key, 'json');
+  const logs = Array.isArray(raw) ? raw : [];
   const clientId = visitInfo.clientId || visitInfo.ip;
   if (logs.some(log => log.clientId === clientId || log.ip === visitInfo.ip)) return;
   logs.unshift(visitInfo);
@@ -245,12 +237,7 @@ export async function incrementDownload(kv, admin, product, visitInfo = null) {
   let stats = await kv.get(key, 'json');
 
   if (!stats) {
-    stats = { today: 0, yesterday: 0, total: 0, todayDate: today, yesterdayDate: yesterday, ips: {} };
-  }
-  if (!stats.ips) stats.ips = {};
-
-  if (stats.ips[clientId]) {
-    return await getStats(kv, admin, product);
+    stats = { today: 0, yesterday: 0, total: 0, todayDate: today, yesterdayDate: yesterday };
   }
 
   if (stats.todayDate !== today) {
@@ -265,12 +252,15 @@ export async function incrementDownload(kv, admin, product, visitInfo = null) {
     stats.todayDate = today;
   }
 
-  stats.ips[clientId] = 1;
   stats.today += 1;
   stats.total = (stats.total || 0) + 1;
 
-  await kv.put(key, JSON.stringify(stats));
-  if (visitInfo) await appendDownloadLog(kv, admin, product, visitInfo);
+  try {
+    await kv.put(key, JSON.stringify(stats));
+    if (visitInfo) await appendDownloadLog(kv, admin, product, visitInfo);
+  } catch (_) {
+    // 统计写入失败不阻断下载
+  }
   return stats;
 }
 
